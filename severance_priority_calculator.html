@@ -223,6 +223,24 @@
       </div>
     </section>
 
+    <section class="card grid">
+      <div class="result-box">
+        <div class="title">DC 직전 1년</div>
+        <div class="period" id="dcPeriod1">기간: -</div>
+        <div class="amount" id="dcYear1">0원</div>
+      </div>
+      <div class="result-box">
+        <div class="title">DC 직전 2년 (1~2년 전)</div>
+        <div class="period" id="dcPeriod2">기간: -</div>
+        <div class="amount" id="dcYear2">0원</div>
+      </div>
+      <div class="result-box">
+        <div class="title">DC 직전 3년 (2~3년 전)</div>
+        <div class="period" id="dcPeriod3">기간: -</div>
+        <div class="amount" id="dcYear3">0원</div>
+      </div>
+    </section>
+
     <section class="card summary">
       <div class="summary-row">일반퇴직금 최우선변제 대상(직전 3년분): <strong id="priorityTotal">0원</strong></div>
       <div class="summary-row">일반퇴직금 최우선변제 외 잔액(3년 초과분): <strong id="outsideTotal">0원</strong></div>
@@ -250,6 +268,12 @@
     const year1El = document.getElementById("year1");
     const year2El = document.getElementById("year2");
     const year3El = document.getElementById("year3");
+    const dcYear1El = document.getElementById("dcYear1");
+    const dcYear2El = document.getElementById("dcYear2");
+    const dcYear3El = document.getElementById("dcYear3");
+    const dcPeriod1El = document.getElementById("dcPeriod1");
+    const dcPeriod2El = document.getElementById("dcPeriod2");
+    const dcPeriod3El = document.getElementById("dcPeriod3");
 
     const priorityTotalEl = document.getElementById("priorityTotal");
     const outsideTotalEl = document.getElementById("outsideTotal");
@@ -371,53 +395,54 @@
       return { items, invalid };
     }
 
-    function calculateDcPriority(retireDate, dcItems) {
+    function calculateDcPriority(retireDate, dcItems, segments) {
       if (!retireDate || dcItems.length === 0) {
         return {
           totalDc: dcItems.reduce((acc, cur) => acc + cur.amount, 0),
+          y1: 0,
+          y2: 0,
+          y3: 0,
           priority: 0,
           outside: dcItems.reduce((acc, cur) => acc + cur.amount, 0),
           lines: []
         };
       }
 
-      const priorityStart = addDays(addYears(retireDate, -3), 1);
-      const priorityEnd = retireDate;
-      const rawPriorityByItem = [];
       let totalDc = 0;
+      let y1Total = 0;
+      let y2Total = 0;
+      let y3Total = 0;
+      let outsideTotal = 0;
+      const lines = [];
 
       for (const item of dcItems) {
-        const yStart = new Date(item.year, 0, 1);
-        const yEnd = new Date(item.year, 11, 31);
-        const yearDays = daysInclusive(yStart, yEnd);
-        const overlap = overlapDays(yStart, yEnd, priorityStart, priorityEnd);
-        const rawPriority = item.amount * (overlap / yearDays);
-        rawPriorityByItem.push({ ...item, overlap, yearDays, rawPriority });
+        const itemStart = new Date(item.year, 0, 1);
+        const itemEnd = new Date(item.year, 11, 31);
+        const itemDays = daysInclusive(itemStart, itemEnd);
+
+        const w1 = overlapDays(itemStart, itemEnd, segments.y1Start, segments.y1End);
+        const w2 = overlapDays(itemStart, itemEnd, segments.y2Start, segments.y2End);
+        const w3 = overlapDays(itemStart, itemEnd, segments.y3Start, segments.y3End);
+        const outsideW = Math.max(0, itemDays - w1 - w2 - w3);
+        const [a1, a2, a3, aOutside] = allocateByWeights(item.amount, [w1, w2, w3, outsideW]);
+
+        y1Total += a1;
+        y2Total += a2;
+        y3Total += a3;
+        outsideTotal += aOutside;
         totalDc += item.amount;
+        lines.push(`${item.year}: 입력 ${formatWon(item.amount)} / 직전1년 ${formatWon(a1)} / 직전2년 ${formatWon(a2)} / 직전3년 ${formatWon(a3)} / 잔액 ${formatWon(aOutside)}`);
       }
 
-      const floors = rawPriorityByItem.map((x) => Math.floor(x.rawPriority));
-      const targetPriority = Math.min(totalDc, Math.max(0, Math.round(rawPriorityByItem.reduce((acc, cur) => acc + cur.rawPriority, 0))));
-      let remain = targetPriority - floors.reduce((acc, cur) => acc + cur, 0);
-
-      const order = rawPriorityByItem
-        .map((x, idx) => ({ idx, frac: x.rawPriority - Math.floor(x.rawPriority) }))
-        .sort((a, b) => b.frac - a.frac);
-
-      for (let k = 0; k < remain; k += 1) {
-        floors[order[k].idx] += 1;
-      }
-
-      const lines = rawPriorityByItem.map((item, idx) => {
-        const priority = floors[idx];
-        const outside = item.amount - priority;
-        return `${item.year}: 입력 ${formatWon(item.amount)} / 직전3년 반영 ${item.overlap}일 / 최우선 ${formatWon(priority)} / 잔액 ${formatWon(outside)}`;
-      });
-
-      const priority = floors.reduce((acc, cur) => acc + cur, 0);
-      const outside = totalDc - priority;
-
-      return { totalDc, priority, outside, lines };
+      return {
+        totalDc,
+        y1: y1Total,
+        y2: y2Total,
+        y3: y3Total,
+        priority: y1Total + y2Total + y3Total,
+        outside: outsideTotal,
+        lines
+      };
     }
 
     function updateEmptyState(total) {
@@ -428,6 +453,12 @@
       outsideTotalEl.textContent = "0원";
       dcPriorityTotalEl.textContent = "0원";
       dcOutsideTotalEl.textContent = "0원";
+      dcYear1El.textContent = "0원";
+      dcYear2El.textContent = "0원";
+      dcYear3El.textContent = "0원";
+      dcPeriod1El.textContent = "기간: -";
+      dcPeriod2El.textContent = "기간: -";
+      dcPeriod3El.textContent = "기간: -";
       combinedPriorityTotalEl.textContent = "0원";
       combinedOutsideTotalEl.textContent = "0원";
       sumEl.textContent = formatWon(total);
@@ -490,6 +521,9 @@
       period1El.textContent = `기간: ${formatDate(y1Start)} ~ ${formatDate(y1End)}`;
       period2El.textContent = `기간: ${formatDate(y2Start)} ~ ${formatDate(y2End)}`;
       period3El.textContent = `기간: ${formatDate(y3Start)} ~ ${formatDate(y3End)}`;
+      dcPeriod1El.textContent = `기간: ${formatDate(y1Start)} ~ ${formatDate(y1End)}`;
+      dcPeriod2El.textContent = `기간: ${formatDate(y2Start)} ~ ${formatDate(y2End)}`;
+      dcPeriod3El.textContent = `기간: ${formatDate(y3Start)} ~ ${formatDate(y3End)}`;
 
       days1El.textContent = `반영일수: ${new Intl.NumberFormat("ko-KR").format(y1Days)}일`;
       days2El.textContent = `반영일수: ${new Intl.NumberFormat("ko-KR").format(y2Days)}일`;
@@ -504,7 +538,10 @@
 
       serviceInfoEl.textContent = `근무기간: ${formatDate(hireDate)} ~ ${formatDate(retireDate)} (총 ${new Intl.NumberFormat("ko-KR").format(totalServiceDays)}일)`;
 
-      const dcResult = calculateDcPriority(retireDate, dcParsed.items);
+      const dcResult = calculateDcPriority(retireDate, dcParsed.items, { y1Start, y1End, y2Start, y2End, y3Start, y3End });
+      dcYear1El.textContent = formatWon(dcResult.y1);
+      dcYear2El.textContent = formatWon(dcResult.y2);
+      dcYear3El.textContent = formatWon(dcResult.y3);
       dcPriorityTotalEl.textContent = formatWon(dcResult.priority);
       dcOutsideTotalEl.textContent = formatWon(dcResult.outside);
       combinedPriorityTotalEl.textContent = formatWon(priorityAmount + dcResult.priority);
