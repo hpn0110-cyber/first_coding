@@ -1,0 +1,277 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>통상임금 계산기 (2024.12.19 대법원 판례 반영)</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --accent: #0f766e;
+      --accent-soft: #e6fffb;
+      --warn: #9a3412;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      background:
+        radial-gradient(circle at 0% 0%, #dcfce7 0%, transparent 40%),
+        radial-gradient(circle at 100% 0%, #cffafe 0%, transparent 35%),
+        var(--bg);
+      color: var(--ink);
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 1.5rem;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .desc {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.93rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 0.95rem;
+    }
+
+    .toggle {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fafafa;
+      font-size: 0.9rem;
+    }
+
+    .toggle input { margin-top: 3px; }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      padding: 11px 16px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .result {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      border: 1px solid #99f6e4;
+    }
+
+    .result strong { font-size: 1.15rem; }
+
+    .note {
+      color: var(--warn);
+      font-size: 0.88rem;
+      line-height: 1.45;
+      margin-top: 6px;
+    }
+
+    .footer {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.45;
+      word-break: keep-all;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h1>통상임금 계산기</h1>
+      <p class="desc">
+        2024.12.19 대법원 전원합의체 판결(2020다247190, 2023다302838) 기준을 반영했습니다.
+        고정성(사전확정성)은 별도 요건으로 보지 않고, 소정근로 대가성 + 정기성 + 일률성을 중심으로 포함 여부를 판단합니다.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>1) 월 통상임금 구성 입력</h2>
+      <div class="grid">
+        <div>
+          <label for="baseSalary">기본급 (월, 원)</label>
+          <input id="baseSalary" type="number" min="0" step="1000" value="2500000" />
+        </div>
+        <div>
+          <label for="fixedAllowance">고정 수당 합계 (월, 원)</label>
+          <input id="fixedAllowance" type="number" min="0" step="1000" value="300000" />
+        </div>
+        <div>
+          <label for="regularBonusAnnual">정기상여금 연간 총액 (원)</label>
+          <input id="regularBonusAnnual" type="number" min="0" step="1000" value="6000000" />
+        </div>
+        <div>
+          <label for="incumbencyBonusAnnual">재직조건부 상여금 연간 총액 (원)</label>
+          <input id="incumbencyBonusAnnual" type="number" min="0" step="1000" value="0" />
+        </div>
+        <div>
+          <label for="workdayBonusAnnual">근무일수조건부 상여금 연간 총액 (원)</label>
+          <input id="workdayBonusAnnual" type="number" min="0" step="1000" value="0" />
+        </div>
+        <div>
+          <label for="otherIncludedAnnual">기타 포함할 정기급여 연간 총액 (원)</label>
+          <input id="otherIncludedAnnual" type="number" min="0" step="1000" value="0" />
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2) 포함 기준 체크</h2>
+      <div class="grid">
+        <label class="toggle">
+          <input id="includeRegularBonus" type="checkbox" checked />
+          정기상여금은 소정근로 대가 + 정기/일률 지급이므로 통상임금에 포함
+        </label>
+        <label class="toggle">
+          <input id="includeIncumbencyBonus" type="checkbox" checked />
+          재직조건부 상여금도 위 요건 충족 시 포함 (고정성 미요구)
+        </label>
+        <label class="toggle">
+          <input id="includeWorkdayBonus" type="checkbox" checked />
+          근무일수조건부 상여금도 소정근로 대가성이 인정되면 포함
+        </label>
+        <label class="toggle">
+          <input id="includeOther" type="checkbox" checked />
+          기타 입력 급여도 정기/일률/소정근로 대가성이 있으면 포함
+        </label>
+      </div>
+      <p class="note">
+        주의: 실제 소송/정산에서는 임금 항목별 취업규칙, 단체협약, 지급관행, 소급효 제한(장래효) 쟁점이 함께 검토됩니다.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>3) 시간단가 기준</h2>
+      <div class="grid">
+        <div>
+          <label for="monthlyHours">월 통상임금 산정시간 (시간)</label>
+          <input id="monthlyHours" type="number" min="1" step="0.1" value="209" />
+        </div>
+      </div>
+      <p class="desc">일반적 예시로 주 40시간제는 월 209시간을 사용하지만, 회사별 기준시간이 다를 수 있습니다.</p>
+    </section>
+
+    <section class="card">
+      <button id="calcBtn" type="button">계산하기</button>
+      <div class="result" id="resultBox" style="margin-top: 12px;">
+        <div>월 통상임금: <strong id="monthlyOrdinary">-</strong></div>
+        <div>통상시급: <strong id="hourlyOrdinary">-</strong></div>
+        <div>연장근로 1시간(통상기준): <strong id="overtime1h">-</strong></div>
+        <div>야간근로 1시간(통상기준): <strong id="night1h">-</strong></div>
+        <div>연장+야간 1시간(통상기준): <strong id="otNight1h">-</strong></div>
+      </div>
+    </section>
+
+    <section class="card footer">
+      <div>참고 판례: 대법원 2024.12.19. 선고 2020다247190(전원합의체), 2023다302838(전원합의체)</div>
+      <div>이 도구는 법률자문이 아닌 계산 보조용입니다.</div>
+    </section>
+  </main>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const won = (n) => new Intl.NumberFormat("ko-KR").format(Math.round(n)) + "원";
+
+    function v(id) {
+      return Number(el(id).value || 0);
+    }
+
+    function c(id) {
+      return el(id).checked;
+    }
+
+    function calc() {
+      const baseSalary = v("baseSalary");
+      const fixedAllowance = v("fixedAllowance");
+      const regularBonusAnnual = v("regularBonusAnnual");
+      const incumbencyBonusAnnual = v("incumbencyBonusAnnual");
+      const workdayBonusAnnual = v("workdayBonusAnnual");
+      const otherIncludedAnnual = v("otherIncludedAnnual");
+      const monthlyHours = v("monthlyHours");
+
+      if (monthlyHours <= 0) {
+        alert("월 산정시간은 0보다 커야 합니다.");
+        return;
+      }
+
+      let monthlyOrdinary = baseSalary + fixedAllowance;
+
+      if (c("includeRegularBonus")) monthlyOrdinary += regularBonusAnnual / 12;
+      if (c("includeIncumbencyBonus")) monthlyOrdinary += incumbencyBonusAnnual / 12;
+      if (c("includeWorkdayBonus")) monthlyOrdinary += workdayBonusAnnual / 12;
+      if (c("includeOther")) monthlyOrdinary += otherIncludedAnnual / 12;
+
+      const hourlyOrdinary = monthlyOrdinary / monthlyHours;
+      const overtime1h = hourlyOrdinary * 1.5;
+      const night1h = hourlyOrdinary * 1.5;
+      const otNight1h = hourlyOrdinary * 2.0;
+
+      el("monthlyOrdinary").textContent = won(monthlyOrdinary);
+      el("hourlyOrdinary").textContent = won(hourlyOrdinary);
+      el("overtime1h").textContent = won(overtime1h);
+      el("night1h").textContent = won(night1h);
+      el("otNight1h").textContent = won(otNight1h);
+    }
+
+    el("calcBtn").addEventListener("click", calc);
+    calc();
+  </script>
+</body>
+</html>

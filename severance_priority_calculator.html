@@ -1,0 +1,184 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>퇴직금 최우선변제금 계산기</title>
+  <style>
+    :root {
+      --bg: #f5f8ff;
+      --card: #ffffff;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --accent: #0f766e;
+      --accent-soft: #ecfdf5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% 0%, #dcfce7 0%, transparent 38%),
+        radial-gradient(circle at 100% 0%, #dbeafe 0%, transparent 35%),
+        var(--bg);
+      padding: 24px;
+    }
+
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.45rem;
+    }
+
+    .desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+
+    .hint {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .result-box {
+      background: var(--accent-soft);
+      border: 1px solid #86efac;
+      border-radius: 10px;
+      padding: 12px;
+      line-height: 1.55;
+    }
+
+    .title {
+      font-size: 0.86rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .amount {
+      font-size: 1.18rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>퇴직금 최우선변제금 계산기</h1>
+      <p class="desc">퇴직금 총액을 입력하면 직전 1년, 직전 2년, 직전 3년 금액으로 자동 분할해서 보여줍니다. 마지막에 총액(합계)도 함께 표시합니다.</p>
+    </section>
+
+    <section class="card">
+      <label for="retirementTotal">퇴직금 총액 (원)</label>
+      <input id="retirementTotal" type="text" inputmode="numeric" placeholder="예: 12000000" />
+      <div class="hint">쉼표를 넣어도 자동 정리됩니다. 계산 기준: 3년 균등 분할</div>
+    </section>
+
+    <section class="card grid">
+      <div class="result-box">
+        <div class="title">직전 1년</div>
+        <div class="amount" id="year1">0원</div>
+      </div>
+      <div class="result-box">
+        <div class="title">직전 2년</div>
+        <div class="amount" id="year2">0원</div>
+      </div>
+      <div class="result-box">
+        <div class="title">직전 3년</div>
+        <div class="amount" id="year3">0원</div>
+      </div>
+      <div class="result-box">
+        <div class="title">총액 (합계)</div>
+        <div class="amount" id="sum">0원</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const input = document.getElementById("retirementTotal");
+    const year1El = document.getElementById("year1");
+    const year2El = document.getElementById("year2");
+    const year3El = document.getElementById("year3");
+    const sumEl = document.getElementById("sum");
+
+    function formatWon(value) {
+      return new Intl.NumberFormat("ko-KR").format(value) + "원";
+    }
+
+    function parseNumber(text) {
+      const digits = (text || "").replace(/[^\d]/g, "");
+      return digits ? Number(digits) : 0;
+    }
+
+    function splitByThree(total) {
+      const base = Math.floor(total / 3);
+      const remainder = total - base * 3;
+
+      const y1 = base + (remainder > 0 ? 1 : 0);
+      const y2 = base + (remainder > 1 ? 1 : 0);
+      const y3 = base;
+
+      return [y1, y2, y3];
+    }
+
+    function render() {
+      const total = parseNumber(input.value);
+      const [y1, y2, y3] = splitByThree(total);
+
+      if (input.value !== "") {
+        input.value = new Intl.NumberFormat("ko-KR").format(total);
+      }
+
+      year1El.textContent = formatWon(y1);
+      year2El.textContent = formatWon(y2);
+      year3El.textContent = formatWon(y3);
+      sumEl.textContent = formatWon(y1 + y2 + y3);
+    }
+
+    input.addEventListener("input", render);
+    render();
+  </script>
+</body>
+</html>
