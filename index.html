@@ -1,0 +1,116 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>노동법 계산기 모음</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --accent: #0f766e;
+      --accent-2: #0ea5e9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% 0%, #dcfce7 0%, transparent 35%),
+        radial-gradient(circle at 100% 0%, #dbeafe 0%, transparent 35%),
+        var(--bg);
+      padding: 24px;
+      display: grid;
+      place-items: center;
+    }
+
+    .wrap {
+      width: min(900px, 100%);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 1.6rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .cards {
+      margin-top: 18px;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    a.card {
+      display: block;
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--ink);
+      background: #fff;
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+
+    a.card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-2);
+      box-shadow: 0 8px 16px rgba(14, 165, 233, 0.15);
+    }
+
+    .title {
+      margin: 0 0 6px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-size: .95rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>노동법 계산기 모음</h1>
+    <p>필요한 계산기를 선택해 바로 사용하세요.</p>
+
+    <section class="cards">
+      <a class="card" href="/ordinary_wage_calculator_2024_case.html">
+        <p class="title">통상임금 계산기</p>
+        <p>2024.12.19 대법원 판례 반영 버전</p>
+      </a>
+
+      <a class="card" href="/severance_priority_calculator.html">
+        <p class="title">퇴직금 최우선변제금 계산기</p>
+        <p>최우선변제 대상 금액 계산</p>
+      </a>
+
+      <a class="card" href="/wage_claim_limitation_calculator.html">
+        <p class="title">임금채권 소멸시효 계산기</p>
+        <p>임금채권 시효 만료일 확인</p>
+      </a>
+    </section>
+
+    <p class="hint">배포 후 루트 주소(`/`)로 접속하면 이 페이지가 기본으로 열립니다.</p>
+  </main>
+</body>
+</html>
