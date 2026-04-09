@@ -40,6 +40,18 @@
       box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
     }
 
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .top-text {
+      flex: 1;
+      min-width: 0;
+    }
+
     h1 {
       margin: 0 0 10px;
       font-size: 1.6rem;
@@ -86,12 +98,55 @@
       font-size: .95rem;
       color: var(--muted);
     }
+
+    .qr-box {
+      width: 96px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 6px;
+      text-align: center;
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.1);
+      flex: 0 0 auto;
+    }
+
+    .qr-box img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    .qr-label {
+      margin-top: 4px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        display: block;
+      }
+
+      .qr-box {
+        margin: 0 0 10px auto;
+      }
+    }
   </style>
 </head>
 <body>
   <main class="wrap">
-    <h1>노동법 계산기 모음</h1>
-    <p>필요한 계산기를 선택해 바로 사용하세요.</p>
+    <section class="topbar">
+      <div class="top-text">
+        <h1>노동법 계산기 모음</h1>
+        <p>필요한 계산기를 선택해 바로 사용하세요.</p>
+      </div>
+      <a class="qr-box" href="https://first-coding-71dr.vercel.app/" target="_blank" rel="noopener noreferrer" aria-label="배포 사이트 열기">
+        <img src="./vercel_link_qr.png" alt="first-coding-71dr.vercel.app QR 코드" />
+        <div class="qr-label">배포 주소 QR</div>
+      </a>
+    </section>
 
     <section class="cards">
       <a class="card" href="./wage_claim_limitation_calculator.html">
