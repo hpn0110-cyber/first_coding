@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>임금채권 소멸시효 계산기</title>
+  <title>임금채권 소멸시효 / 범죄일·공소시효 계산기</title>
   <style>
     :root {
       --bg: #f6f9ff;
@@ -49,6 +49,11 @@
       font-size: 1.45rem;
     }
 
+    h2 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+    }
+
     .desc {
       margin: 0;
       font-size: 0.92rem;
@@ -75,15 +80,6 @@
       border: 1px solid var(--line);
       border-radius: 10px;
       font-size: 0.95rem;
-    }
-
-    .check {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      font-size: 0.9rem;
-      color: var(--muted);
     }
 
     .result {
@@ -113,29 +109,44 @@
 <body>
   <main class="wrap">
     <section class="card">
-      <h1>임금채권 소멸시효 계산기</h1>
-      <p class="desc">임금채권은 일반적으로 권리를 행사할 수 있는 날부터 3년 이내 행사해야 합니다. 아래 날짜를 입력하면 만료일과 남은 기간을 자동 계산합니다.</p>
+      <h1>임금채권 소멸시효 / 범죄일·공소시효 계산기</h1>
+      <p class="desc">임금채권은 일반적으로 각 임금의 지급일을 기산점으로 3년 이내 행사해야 합니다. 임금지급일을 입력하면 만료일과 남은 기간을 자동 계산합니다.</p>
       <p class="note">참고: 개별 사건(지급기일 약정, 중단 사유, 진정/소송 진행 여부)에 따라 결과가 달라질 수 있습니다.</p>
     </section>
 
-    <section class="card grid">
+    <section class="card">
+      <h2>노동법 위반 범죄일·공소시효 계산기</h2>
+      <p class="desc">근무기간 마지막 근무일을 입력하면 범죄일과 공소시효 만료일을 자동 계산합니다.</p>
+      <p class="note">공소시효는 5년입니다.</p>
+      <p class="note">계산 기준: 퇴직일 = 마지막 근무일 + 1일, 범죄일 = 퇴직일(0일) 기준 + 14일, 공소시효 만료일 = 범죄일 전날의 5년 뒤</p>
+      <div style="margin-top: 10px;">
+        <label for="lastWorkdayForCrime">근무기간 마지막 근무일</label>
+        <input id="lastWorkdayForCrime" type="date" />
+        <div class="result" id="crimeResult">
+          <span class="placeholder">근무기간 마지막 근무일을 입력하면 자동 계산됩니다.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
       <div>
-        <label for="payday">임금지급일 기준</label>
+        <label for="payday">임금지급일 (기산점)</label>
         <input id="payday" type="date" />
         <div class="result" id="paydayResult">
           <span class="placeholder">임금지급일을 입력하면 자동 계산됩니다.</span>
         </div>
       </div>
+    </section>
 
-      <div>
-        <label for="lastWorkday">마지막 근무일 기준</label>
-        <input id="lastWorkday" type="date" />
-        <label class="check" for="plus14">
-          <input id="plus14" type="checkbox" checked />
-          퇴직 시 지급기한 14일 가산해서 계산
-        </label>
-        <div class="result" id="lastWorkdayResult">
-          <span class="placeholder">마지막 근무일을 입력하면 자동 계산됩니다.</span>
+    <section class="card">
+      <h2>퇴직급여 소멸시효 계산기</h2>
+      <p class="desc">퇴직급여 계산은 기산점을 퇴직일로 봅니다. 여기서 퇴직일은 근무기간 마지막 날의 다음날입니다.</p>
+      <p class="note">표기 기준: 근무기간 마지막 날 + 1일 = 퇴직일(기산점), 소멸시효 완성일 = 퇴직일로부터 3년이 되는 날의 전날</p>
+      <div style="margin-top: 10px;">
+        <label for="retirementDateInput">퇴직일(근무기간 마지막 날 다음날)</label>
+        <input id="retirementDateInput" type="date" />
+        <div class="result" id="retirementResult">
+          <span class="placeholder">퇴직일을 입력하면 자동 계산됩니다.</span>
         </div>
       </div>
     </section>
@@ -143,13 +154,15 @@
 
   <script>
     const paydayInput = document.getElementById("payday");
-    const lastWorkdayInput = document.getElementById("lastWorkday");
-    const plus14Input = document.getElementById("plus14");
-
+    const lastWorkdayForCrimeInput = document.getElementById("lastWorkdayForCrime");
+    const retirementDateInput = document.getElementById("retirementDateInput");
     const paydayResult = document.getElementById("paydayResult");
-    const lastWorkdayResult = document.getElementById("lastWorkdayResult");
+    const crimeResult = document.getElementById("crimeResult");
+    const retirementResult = document.getElementById("retirementResult");
 
     const LIMITATION_YEARS = 3;
+    const CRIMINAL_LIMITATION_YEARS = 5;
+    const CRIME_14TH_DAY_OFFSET = 14;
 
     function parseDate(value) {
       if (!value) {
@@ -157,12 +170,6 @@
       }
       const date = new Date(`${value}T00:00:00`);
       return Number.isNaN(date.getTime()) ? null : date;
-    }
-
-    function addDays(date, days) {
-      const d = new Date(date);
-      d.setDate(d.getDate() + days);
-      return d;
     }
 
     function addYears(date, years) {
@@ -173,6 +180,12 @@
       if (d.getMonth() !== month) {
         d.setDate(0);
       }
+      return d;
+    }
+
+    function addDays(date, days) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
       return d;
     }
 
@@ -194,7 +207,7 @@
         return;
       }
 
-      const expiryDate = addYears(baseDate, LIMITATION_YEARS);
+      const expiryDate = addDays(addYears(baseDate, LIMITATION_YEARS), -1);
       const today = new Date();
       const remain = daysBetween(today, expiryDate);
 
@@ -214,20 +227,65 @@
       `;
     }
 
+    function renderRetirementResult(target, retirementDate) {
+      if (!retirementDate) {
+        target.innerHTML = '<span class="placeholder">퇴직일을 입력하면 자동 계산됩니다.</span>';
+        return;
+      }
+
+      const expiryDate = addDays(addYears(retirementDate, LIMITATION_YEARS), -1);
+      const today = new Date();
+      const remain = daysBetween(today, expiryDate);
+
+      let remainText = "만료됨";
+      if (remain > 0) {
+        remainText = `${remain}일 남음`;
+      } else if (remain === 0) {
+        remainText = "오늘 만료";
+      } else {
+        remainText = `${Math.abs(remain)}일 경과`;
+      }
+
+      target.innerHTML = `
+        퇴직일(기산점): <strong>${formatDate(retirementDate)}</strong><br>
+        소멸시효 만료일(3년): <strong>${formatDate(expiryDate)}</strong><br>
+        상태: <strong>${remainText}</strong>
+      `;
+    }
+
+    function renderCrimeResult(target, lastWorkday) {
+      if (!lastWorkday) {
+        target.innerHTML = '<span class="placeholder">근무기간 마지막 근무일을 입력하면 자동 계산됩니다.</span>';
+        return;
+      }
+
+      const retirementDate = addDays(lastWorkday, 1);
+      const crimeDate = addDays(retirementDate, CRIME_14TH_DAY_OFFSET);
+      const limitationBaseDate = addDays(crimeDate, -1);
+      const expiryDate = addYears(limitationBaseDate, CRIMINAL_LIMITATION_YEARS);
+
+      target.innerHTML = `
+        마지막 근무일: <strong>${formatDate(lastWorkday)}</strong><br>
+        퇴직일(마지막 근무일 + 1일): <strong>${formatDate(retirementDate)}</strong><br>
+        범죄일(퇴직일로부터 14일): <strong>${formatDate(crimeDate)}</strong><br>
+        공소시효 만료일(5년): <strong>${formatDate(expiryDate)}</strong>
+      `;
+    }
+
     function calculate() {
+      const lastWorkdayForCrime = parseDate(lastWorkdayForCrimeInput.value);
+      renderCrimeResult(crimeResult, lastWorkdayForCrime);
+
       const payday = parseDate(paydayInput.value);
       renderResult(paydayResult, payday, "임금지급일");
 
-      const lastWorkday = parseDate(lastWorkdayInput.value);
-      const base = lastWorkday
-        ? (plus14Input.checked ? addDays(lastWorkday, 14) : lastWorkday)
-        : null;
-      renderResult(lastWorkdayResult, base, "마지막 근무일");
+      const retirementDate = parseDate(retirementDateInput.value);
+      renderRetirementResult(retirementResult, retirementDate);
     }
 
+    lastWorkdayForCrimeInput.addEventListener("input", calculate);
     paydayInput.addEventListener("input", calculate);
-    lastWorkdayInput.addEventListener("input", calculate);
-    plus14Input.addEventListener("change", calculate);
+    retirementDateInput.addEventListener("input", calculate);
 
     calculate();
   </script>

@@ -1,0 +1,228 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>해고예고기간 계산기</title>
+  <style>
+    :root {
+      --bg: #f4f8ff;
+      --card: #ffffff;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --accent: #0f766e;
+      --ok-bg: #ecfdf5;
+      --ok-line: #86efac;
+      --ok-text: #166534;
+      --bad-bg: #fef2f2;
+      --bad-line: #fecaca;
+      --bad-text: #991b1b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% 0%, #dcfce7 0%, transparent 35%),
+        radial-gradient(circle at 100% 0%, #dbeafe 0%, transparent 35%),
+        var(--bg);
+      padding: 24px;
+    }
+
+    .wrap {
+      max-width: 820px;
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.45rem;
+    }
+
+    .desc {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.92rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+
+    .field-note {
+      margin-top: 6px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .result {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      padding: 14px;
+      line-height: 1.6;
+      background: #fafcff;
+    }
+
+    .result.ok {
+      background: var(--ok-bg);
+      border-color: var(--ok-line);
+      color: var(--ok-text);
+    }
+
+    .result.bad {
+      background: var(--bad-bg);
+      border-color: var(--bad-line);
+      color: var(--bad-text);
+    }
+
+    .main {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .sub {
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>근로기준법 해고예고기간 계산기</h1>
+      <p class="desc">해고통지일과 해고일을 입력하면 해고통지일 다음날부터 해고일 전날까지의 예고기간이 30일 이상인지 자동으로 판정합니다.</p>
+    </section>
+
+    <section class="card grid">
+      <div>
+        <label for="noticeDate">해고통지일</label>
+        <input id="noticeDate" type="date" />
+      </div>
+      <div>
+        <label for="dismissDate">해고일</label>
+        <input id="dismissDate" type="date" />
+        <p class="field-note">해고일은 근무기간 마지막 날의 다음날로 입력하세요.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div id="result" class="result">
+        <div class="main">날짜를 입력해 주세요.</div>
+        <div class="sub">예고기간과 30일 충족 여부를 표시합니다.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <p class="note">계산 기준: 해고일은 근무기간 마지막 날의 다음날이며, 해고통지일과 해고일 모두 불산입(제외)하고 해고통지일 다음날부터 해고일 전날까지의 일수로 계산합니다.</p>
+    </section>
+  </main>
+
+  <script>
+    const noticeDateInput = document.getElementById("noticeDate");
+    const dismissDateInput = document.getElementById("dismissDate");
+    const resultEl = document.getElementById("result");
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    function parseDate(value) {
+      if (!value) {
+        return null;
+      }
+      const d = new Date(`${value}T00:00:00`);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function setResult(type, mainText, subText) {
+      resultEl.className = `result${type ? ` ${type}` : ""}`;
+      resultEl.innerHTML = `<div class="main">${mainText}</div><div class="sub">${subText}</div>`;
+    }
+
+    function calculate() {
+      const noticeDate = parseDate(noticeDateInput.value);
+      const dismissDate = parseDate(dismissDateInput.value);
+
+      if (!noticeDate || !dismissDate) {
+        setResult("", "날짜를 입력해 주세요.", "예고기간과 30일 충족 여부를 표시합니다.");
+        return;
+      }
+
+      // 해고통지일, 해고일 모두 불산입: 통지일 다음날부터 해고일 전날까지의 일수
+      const gapDays = Math.floor((dismissDate.getTime() - noticeDate.getTime()) / DAY_MS) - 1;
+
+      if (gapDays < 0) {
+        setResult("bad", "입력 오류", "해고일은 해고통지일 다음날 이후여야 합니다.");
+        return;
+      }
+
+      if (gapDays >= 30) {
+        setResult(
+          "ok",
+          `예고기간 ${gapDays}일: 30일 이상 충족`,
+          `해고통지일·해고일 제외 기준 · 해고통지일 ${formatDate(noticeDate)} / 해고일 ${formatDate(dismissDate)}`
+        );
+        return;
+      }
+
+      const shortDays = 30 - gapDays;
+      setResult(
+        "bad",
+        `예고기간 ${gapDays}일: 30일 미달`,
+        `${shortDays}일 부족 (해고통지일·해고일 제외 기준 · 해고통지일 ${formatDate(noticeDate)} / 해고일 ${formatDate(dismissDate)})`
+      );
+    }
+
+    noticeDateInput.addEventListener("input", calculate);
+    dismissDateInput.addEventListener("input", calculate);
+    calculate();
+  </script>
+</body>
+</html>
