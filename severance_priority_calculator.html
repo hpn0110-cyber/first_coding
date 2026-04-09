@@ -148,13 +148,32 @@
       color: var(--accent);
       font-size: 1.07rem;
     }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      resize: vertical;
+      font-family: "Consolas", "Malgun Gothic", monospace;
+    }
+
+    .dc-breakdown {
+      margin-top: 8px;
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.5;
+      white-space: pre-line;
+    }
   </style>
 </head>
 <body>
   <main class="wrap">
     <section class="card">
       <h1>퇴직금 최우선변제금 계산기</h1>
-      <p class="desc">입사일, 퇴사일, 총 퇴직금을 입력하면 직전 1년·2년·3년의 실제 기간과 해당 금액을 자동으로 계산합니다. 근속 3년 초과 시 최우선변제 외 퇴직금 잔액도 함께 표시됩니다.</p>
+      <p class="desc">입사일, 퇴사일, 총 퇴직금을 입력하면 직전 1년·2년·3년의 실제 기간과 해당 금액을 자동으로 계산합니다. 근속 3년 초과 시 최우선변제 외 퇴직금 잔액도 함께 표시되며, DC퇴직연금 연도별 금액 입력 시 DC 최우선변제 금액도 별도로 계산됩니다.</p>
     </section>
 
     <section class="card">
@@ -174,6 +193,13 @@
       </div>
       <div class="hint">계산 방식: 입력한 총 퇴직금을 근무일수 비율로 배분해 직전 1년, 직전 2년(1~2년 전), 직전 3년(2~3년 전), 3년 초과분으로 나눕니다.</div>
       <div class="warn" id="warn"></div>
+    </section>
+
+    <section class="card">
+      <label for="dcYearly">DC퇴직연금 연도별 금액 입력</label>
+      <textarea id="dcYearly" placeholder="예시&#10;2022 3000000&#10;2023 3200000&#10;2024 3500000"></textarea>
+      <div class="hint">한 줄에 `연도 금액` 형식으로 입력하세요. 쉼표 가능 (예: `2024 3,500,000`)</div>
+      <div class="dc-breakdown" id="dcBreakdown">DC 연도별 계산내역: -</div>
     </section>
 
     <section class="card grid">
@@ -198,8 +224,12 @@
     </section>
 
     <section class="card summary">
-      <div class="summary-row">최우선변제 대상(직전 3년분): <strong id="priorityTotal">0원</strong></div>
-      <div class="summary-row">최우선변제 외 퇴직금 잔액(3년 초과분): <strong id="outsideTotal">0원</strong></div>
+      <div class="summary-row">일반퇴직금 최우선변제 대상(직전 3년분): <strong id="priorityTotal">0원</strong></div>
+      <div class="summary-row">일반퇴직금 최우선변제 외 잔액(3년 초과분): <strong id="outsideTotal">0원</strong></div>
+      <div class="summary-row">DC퇴직연금 최우선변제 대상(직전 3년분): <strong id="dcPriorityTotal">0원</strong></div>
+      <div class="summary-row">DC퇴직연금 최우선변제 외 잔액(3년 초과분): <strong id="dcOutsideTotal">0원</strong></div>
+      <div class="summary-row">통합 최우선변제 대상(일반+DC): <strong id="combinedPriorityTotal">0원</strong></div>
+      <div class="summary-row">통합 최우선변제 외 잔액(일반+DC): <strong id="combinedOutsideTotal">0원</strong></div>
       <div class="summary-row">총 퇴직금(입력값): <strong id="sum">0원</strong></div>
       <div class="summary-row" id="serviceInfo">근무기간: -</div>
     </section>
@@ -223,9 +253,15 @@
 
     const priorityTotalEl = document.getElementById("priorityTotal");
     const outsideTotalEl = document.getElementById("outsideTotal");
+    const dcPriorityTotalEl = document.getElementById("dcPriorityTotal");
+    const dcOutsideTotalEl = document.getElementById("dcOutsideTotal");
+    const combinedPriorityTotalEl = document.getElementById("combinedPriorityTotal");
+    const combinedOutsideTotalEl = document.getElementById("combinedOutsideTotal");
     const sumEl = document.getElementById("sum");
     const serviceInfoEl = document.getElementById("serviceInfo");
     const warnEl = document.getElementById("warn");
+    const dcYearlyInput = document.getElementById("dcYearly");
+    const dcBreakdownEl = document.getElementById("dcBreakdown");
 
     const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -303,14 +339,100 @@
       return base;
     }
 
+    function parseDcYearly(text) {
+      const lines = (text || "").split(/\r?\n/);
+      const items = [];
+      const invalid = [];
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) {
+          continue;
+        }
+
+        const yearMatch = line.match(/\b(19|20)\d{2}\b/);
+        if (!yearMatch) {
+          invalid.push(line);
+          continue;
+        }
+
+        const year = Number(yearMatch[0]);
+        const rest = line.replace(yearMatch[0], "");
+        const amountDigits = rest.replace(/[^\d]/g, "");
+        const amount = amountDigits ? Number(amountDigits) : 0;
+        if (amount <= 0) {
+          invalid.push(line);
+          continue;
+        }
+
+        items.push({ year, amount });
+      }
+
+      return { items, invalid };
+    }
+
+    function calculateDcPriority(retireDate, dcItems) {
+      if (!retireDate || dcItems.length === 0) {
+        return {
+          totalDc: dcItems.reduce((acc, cur) => acc + cur.amount, 0),
+          priority: 0,
+          outside: dcItems.reduce((acc, cur) => acc + cur.amount, 0),
+          lines: []
+        };
+      }
+
+      const priorityStart = addDays(addYears(retireDate, -3), 1);
+      const priorityEnd = retireDate;
+      const rawPriorityByItem = [];
+      let totalDc = 0;
+
+      for (const item of dcItems) {
+        const yStart = new Date(item.year, 0, 1);
+        const yEnd = new Date(item.year, 11, 31);
+        const yearDays = daysInclusive(yStart, yEnd);
+        const overlap = overlapDays(yStart, yEnd, priorityStart, priorityEnd);
+        const rawPriority = item.amount * (overlap / yearDays);
+        rawPriorityByItem.push({ ...item, overlap, yearDays, rawPriority });
+        totalDc += item.amount;
+      }
+
+      const floors = rawPriorityByItem.map((x) => Math.floor(x.rawPriority));
+      const targetPriority = Math.min(totalDc, Math.max(0, Math.round(rawPriorityByItem.reduce((acc, cur) => acc + cur.rawPriority, 0))));
+      let remain = targetPriority - floors.reduce((acc, cur) => acc + cur, 0);
+
+      const order = rawPriorityByItem
+        .map((x, idx) => ({ idx, frac: x.rawPriority - Math.floor(x.rawPriority) }))
+        .sort((a, b) => b.frac - a.frac);
+
+      for (let k = 0; k < remain; k += 1) {
+        floors[order[k].idx] += 1;
+      }
+
+      const lines = rawPriorityByItem.map((item, idx) => {
+        const priority = floors[idx];
+        const outside = item.amount - priority;
+        return `${item.year}: 입력 ${formatWon(item.amount)} / 직전3년 반영 ${item.overlap}일 / 최우선 ${formatWon(priority)} / 잔액 ${formatWon(outside)}`;
+      });
+
+      const priority = floors.reduce((acc, cur) => acc + cur, 0);
+      const outside = totalDc - priority;
+
+      return { totalDc, priority, outside, lines };
+    }
+
     function updateEmptyState(total) {
       year1El.textContent = "0원";
       year2El.textContent = "0원";
       year3El.textContent = "0원";
       priorityTotalEl.textContent = "0원";
       outsideTotalEl.textContent = "0원";
+      dcPriorityTotalEl.textContent = "0원";
+      dcOutsideTotalEl.textContent = "0원";
+      combinedPriorityTotalEl.textContent = "0원";
+      combinedOutsideTotalEl.textContent = "0원";
       sumEl.textContent = formatWon(total);
       serviceInfoEl.textContent = "근무기간: -";
+      dcBreakdownEl.textContent = "DC 연도별 계산내역: -";
       period1El.textContent = "기간: -";
       period2El.textContent = "기간: -";
       period3El.textContent = "기간: -";
@@ -330,9 +452,13 @@
 
       const hireDate = parseDate(hireDateInput.value);
       const retireDate = parseDate(retireDateInput.value);
+      const dcParsed = parseDcYearly(dcYearlyInput.value);
 
       if (!hireDate || !retireDate) {
         updateEmptyState(total);
+        if (dcParsed.items.length > 0) {
+          dcBreakdownEl.textContent = "DC 계산을 위해 퇴사일을 입력하세요.";
+        }
         return;
       }
 
@@ -377,11 +503,28 @@
       outsideTotalEl.textContent = formatWon(outsideAmount);
 
       serviceInfoEl.textContent = `근무기간: ${formatDate(hireDate)} ~ ${formatDate(retireDate)} (총 ${new Intl.NumberFormat("ko-KR").format(totalServiceDays)}일)`;
+
+      const dcResult = calculateDcPriority(retireDate, dcParsed.items);
+      dcPriorityTotalEl.textContent = formatWon(dcResult.priority);
+      dcOutsideTotalEl.textContent = formatWon(dcResult.outside);
+      combinedPriorityTotalEl.textContent = formatWon(priorityAmount + dcResult.priority);
+      combinedOutsideTotalEl.textContent = formatWon(outsideAmount + dcResult.outside);
+
+      if (dcParsed.invalid.length > 0) {
+        warnEl.textContent = `일부 DC 입력 형식을 확인하세요: ${dcParsed.invalid.join(", ")}`;
+      }
+
+      if (dcResult.lines.length === 0) {
+        dcBreakdownEl.textContent = "DC 연도별 계산내역: 입력값 없음";
+      } else {
+        dcBreakdownEl.textContent = `DC 연도별 계산내역\n${dcResult.lines.join("\n")}`;
+      }
     }
 
     hireDateInput.addEventListener("input", calculate);
     retireDateInput.addEventListener("input", calculate);
     totalInput.addEventListener("input", calculate);
+    dcYearlyInput.addEventListener("input", calculate);
 
     calculate();
   </script>
